@@ -1,0 +1,108 @@
+# Simplified Production Docker Compose for SIP Proxy Blueprint
+# Core services only - SIP Proxy, Drachtio, WebRTC Bridge
+
+services:
+  # SIP Proxy Web Service - Main application
+  sip-proxy-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: sip-proxy-app-production
+    restart: unless-stopped
+    ports:
+      - "3001:3000" # HTTP API (changed from 3000)
+      - "5061:5060" # SIP Signaling (changed from 5060)
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - DRACHTIO_HOST=drachtio-server
+      - DRACHTIO_PORT=9022
+      - DRACHTIO_SECRET=cymru
+      - TARGET_SIP_SERVER=asterisk-service.ada-asia.my:5060
+      - CORS_ORIGIN=https://yourdomain.com
+    depends_on:
+      - drachtio-server
+    networks:
+      - sip-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Drachtio SIP Server - SIP signaling
+  drachtio-server:
+    build:
+      context: ./drachtio
+      dockerfile: Dockerfile
+    container_name: drachtio-server-production
+    restart: unless-stopped
+    ports:
+      - "9023:9022" # Admin port (changed from 9022)
+      - "5062:5060" # SIP port (changed from 5060)
+      - "5063:5061" # SIP TLS port (changed from 5061)
+    environment:
+      - DRACHTIO_ADMIN_PORT=9022
+      - DRACHTIO_SIP_PORT=5060
+      - DRACHTIO_LOG_LEVEL=info
+    networks:
+      - sip-network
+    # Drachtio doesn't have HTTP health endpoint
+    # healthcheck:
+    #   test:
+    #     [
+    #       "CMD",
+    #       "wget",
+    #       "--quiet",
+    #       "--tries=1",
+    #       "--spider",
+    #       "http://localhost:9022/health",
+    #     ]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+
+  # WebRTC Bridge - WebSocket server for browsers
+  webrtc-bridge:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.webrtc
+    container_name: webrtc-bridge-production
+    restart: unless-stopped
+    ports:
+      - "8081:8080" # WebSocket port (changed from 8080)
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - SIP_PROXY_URL=http://sip-proxy-app:3000
+      - CORS_ORIGIN=https://yourdomain.com
+    depends_on:
+      - sip-proxy-app
+    networks:
+      - sip-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  sip-network:
+    driver: bridge

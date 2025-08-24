@@ -12,9 +12,13 @@ RUN apt-get update && apt-get install -y \
     kmod \
     && rm -rf /var/lib/apt/lists/*
 
-# Install RTPEngine (using pre-built binary)
-RUN wget -O /usr/local/bin/rtpengine https://github.com/sipwise/rtpengine/releases/download/mr11.1.1.2/rtpengine-mr11.1.1.2.0.x86_64 \
-    && chmod +x /usr/local/bin/rtpengine
+# Install RTPEngine (using package manager)
+RUN apt-get update && apt-get install -y \
+    rtpengine \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symlink for compatibility
+RUN ln -sf /usr/bin/rtpengine /usr/local/bin/rtpengine
 
 # Create health check script
 RUN echo '#!/bin/bash\n\

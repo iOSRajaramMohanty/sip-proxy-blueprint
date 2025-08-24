@@ -1,4 +1,4 @@
-version: "3.8"
+# Docker Compose version 3.8
 
 services:
   # SIP Proxy Application
@@ -61,13 +61,13 @@ services:
 
   # RTPEngine Load Balancer
   rtpengine-lb:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: rtpengine-lb
     restart: unless-stopped
     ports:
       - "22222:22222" # RTPEngine load balancer
-    volumes:
-      - ./nginx/rtpengine.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - rtpengine-worker-1
       - rtpengine-worker-2
@@ -89,7 +89,9 @@ services:
 
   # RTPEngine Worker 1
   rtpengine-worker-1:
-    image: sippy/rtpengine:latest
+    build:
+      context: ./rtpengine
+      dockerfile: Dockerfile
     container_name: rtpengine-worker-1
     restart: unless-stopped
     ports:
@@ -118,7 +120,9 @@ services:
 
   # RTPEngine Worker 2
   rtpengine-worker-2:
-    image: sippy/rtpengine:latest
+    build:
+      context: ./rtpengine
+      dockerfile: Dockerfile
     container_name: rtpengine-worker-2
     restart: unless-stopped
     ports:

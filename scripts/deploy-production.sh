@@ -17,15 +17,17 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
-# Check if .env.production exists
-if [ ! -f "env.production" ]; then
-    echo "❌ env.production file not found. Please create it first."
+# Check if environment file exists
+if [ ! -f "env.production.simple" ]; then
+    echo "❌ env.production.simple file not found. Please create it first."
     exit 1
 fi
 
 # Load production environment variables
 echo "📋 Loading production environment variables..."
-export $(cat env.production | xargs)
+set -a  # automatically export all variables
+source env.production.simple
+set +a  # stop automatically exporting
 
 # Build and start services
 echo "🔨 Building production images..."

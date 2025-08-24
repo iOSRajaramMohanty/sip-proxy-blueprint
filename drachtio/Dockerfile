@@ -7,6 +7,7 @@ FROM drachtio/drachtio-server:latest
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy configuration
@@ -24,9 +25,9 @@ echo "OK"' > /usr/local/bin/health-check.sh && \
 # Expose ports
 EXPOSE 9022 5060 5061
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:9022/health || exit 1
+# Health check - Drachtio doesn't have HTTP health endpoint
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#   CMD wget --quiet --tries=1 --spider http://localhost:9022/health || exit 1
 
-# Start Drachtio with health check server
-CMD ["sh", "-c", "drachtio -f /etc/drachtio.conf.xml & sleep 5 && /usr/local/bin/health-check.sh | nc -l -p 9022"] 
+# Start Drachtio
+CMD ["drachtio", "-f", "/etc/drachtio.conf.xml"] 
