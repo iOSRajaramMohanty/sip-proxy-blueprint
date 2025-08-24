@@ -465,12 +465,43 @@ srf.on("connect", () => {
   // Handle incoming INVITE requests
   srf.invite(async (req, res) => {
     try {
-      const callId = req.get("Call-ID");
-      const from = req.getParsedHeader("From");
-      const to = req.getParsedHeader("To");
+      // Debug: Log the request object first
+      logger.info(
+        `INVITE received from ${req.source_address}:${req.source_port}`
+      );
+      logger.info(`Request object keys: ${Object.keys(req).join(", ")}`);
 
-      logger.info(`INVITE from ${req.source_address}:${req.source_port}`);
-      logger.info(`Call ${callId}: ${from.uri} -> ${to.uri}`);
+      // Try to get Call-ID with error handling
+      let callId;
+      try {
+        callId = req.get("Call-ID");
+        logger.info(`Call-ID: ${callId}`);
+      } catch (error) {
+        logger.error(`Failed to get Call-ID: ${error.message}`);
+        callId = `unknown-${Date.now()}`;
+      }
+
+      // Try to get From and To headers with fallback
+      let from, to;
+      try {
+        from = req.getParsedHeader("From");
+        logger.info(`From header parsed: ${JSON.stringify(from)}`);
+      } catch (error) {
+        logger.warn(`Failed to parse From header: ${error.message}`);
+        from = { uri: { user: "unknown", host: "127.0.0.1" } };
+      }
+
+      try {
+        to = req.getParsedHeader("To");
+        logger.info(`To header parsed: ${JSON.stringify(to)}`);
+      } catch (error) {
+        logger.warn(`Failed to parse To header: ${error.message}`);
+        to = { uri: { user: "test", host: "asterisk-service.ada-asia.my" } };
+      }
+
+      logger.info(
+        `Call ${callId}: ${from.uri.user}@${from.uri.host} -> ${to.uri.user}@${to.uri.host}`
+      );
 
       // Increment call counters
       global.activeCalls = (global.activeCalls || 0) + 1;
