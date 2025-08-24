@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<drachtio>
+  <!-- Admin socket configuration -->
+  <admin>
+    <port>9022</port>
+    <bind-ip>0.0.0.0</bind-ip>
+    <secret>ClueCon</secret>
+  </admin>
+  
+  <!-- SIP server configuration -->
+  <sip>
+    <!-- SIP interfaces -->
+    <sip-interface>
+      <port>5060</port>
+      <protocol>udp</protocol>
+      <bind-ip>0.0.0.0</bind-ip>
+    </sip-interface>
+    
+    <sip-interface>
+      <port>5060</port>
+      <protocol>tcp</protocol>
+      <bind-ip>0.0.0.0</bind-ip>
+    </sip-interface>
+    
+    <!-- SIP settings -->
+    <sip-timers>
+      <t1>500</t1>
+      <t2>4000</t2>
+      <t4>5000</t4>
+      <timer-b>32000</timer-b>
+      <timer-f>32000</timer-f>
+      <timer-h>32000</timer-h>
+    </sip-timers>
+    
+    <!-- Authentication -->
+    <authentication>
+      <realm>sip-proxy</realm>
+      <nonce-timeout>300</nonce-timeout>
+    </authentication>
+  </sip>
+  
+  <!-- Logging -->
+  <logging>
+    <level>info</level>
+    <facility>local0</facility>
+  </logging>
+  
+  <!-- Application settings -->
+  <application>
+    <name>sip-proxy</name>
+    <type>proxy</type>
+    <script>/app/proxy.js</script>
+  </application>
+</drachtio> 

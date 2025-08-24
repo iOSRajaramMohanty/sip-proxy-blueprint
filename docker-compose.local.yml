@@ -1,0 +1,79 @@
+version: "3.8"
+
+services:
+  # Local SIP Proxy App (Node.js)
+  sip-proxy-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: sip-proxy-local
+    ports:
+      - "3000:3000" # HTTP API
+      - "5060:5060" # SIP signaling
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - LOG_LEVEL=debug
+      - DRACHTIO_HOST=127.0.0.1
+      - DRACHTIO_PORT=9022
+      - DRACHTIO_SECRET=secret
+      - RTPENGINE_HOST=127.0.0.1
+      - RTPENGINE_PORT=22222
+      - RTPENGINE_WORKER_1_HOST=127.0.0.1
+      - RTPENGINE_WORKER_1_PORT=22225
+      - RTPENGINE_WORKER_2_HOST=127.0.0.1
+      - RTPENGINE_WORKER_2_PORT=22227
+      - TARGET_SIP_SERVER=asterisk-service.ada-asia.my:8090
+      - CORS_ORIGIN=http://localhost:3000
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    networks:
+      - sip-proxy-local
+    depends_on:
+      - drachtio-server
+      - rtpengine
+    restart: unless-stopped
+
+  # Local Drachtio Server
+  drachtio-server:
+    image: drachtio/drachtio-server:latest
+    container_name: drachtio-local
+    ports:
+      - "9022:9022" # Drachtio admin interface
+      - "5060:5060/udp" # SIP UDP
+      - "5060:5060/tcp" # SIP TCP
+      - "5061:5061/tcp" # SIP TLS
+    environment:
+      - DRACHTIO_ADMIN_PORT=9022
+      - DRACHTIO_SIP_PORT=5060
+      - DRACHTIO_SIP_TLS_PORT=5061
+    volumes:
+      - ./drachtio/drachtio.conf.xml:/etc/drachtio.conf.xml
+    networks:
+      - sip-proxy-local
+    restart: unless-stopped
+
+  # Local RTPEngine (for media handling)
+  rtpengine:
+    image: sippy/rtpengine:latest
+    container_name: rtpengine-local
+    ports:
+      - "22222:22222" # Control interface
+      - "12223:12223" # Media interface
+    volumes:
+      - ./rtpengine/rtpengine.conf:/etc/rtpengine/rtpengine.conf
+      - rtpengine-data:/var/spool/rtpengine
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+    networks:
+      - sip-proxy-local
+    restart: unless-stopped
+
+networks:
+  sip-proxy-local:
+    driver: bridge
+
+volumes:
+  rtpengine-data:

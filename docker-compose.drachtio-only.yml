@@ -1,0 +1,25 @@
+services:
+  # Local Drachtio Server
+  drachtio-server:
+    image: drachtio/drachtio-server:latest
+    platform: linux/arm64
+    container_name: drachtio-local
+    ports:
+      - "9022:9022" # Drachtio admin interface
+      - "5060:5060/udp" # SIP UDP
+      - "5060:5060/tcp" # SIP TCP
+      - "5061:5061/tcp" # SIP TLS
+    environment:
+      - DRACHTIO_ADMIN_PORT=9022
+      - DRACHTIO_SIP_PORT=5060
+      - DRACHTIO_SIP_TLS_PORT=5061
+      - DRACHTIO_LOG_LEVEL=info
+    volumes:
+      - ./drachtio/drachtio.conf.xml:/etc/drachtio.conf.xml
+    networks:
+      - drachtio-local
+    restart: unless-stopped
+
+networks:
+  drachtio-local:
+    driver: bridge
