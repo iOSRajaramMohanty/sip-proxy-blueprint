@@ -9,7 +9,7 @@ A production-ready SIP proxy that handles WebRTC calls from browsers, transcodes
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   WebRTC        │    │   SIP Proxy     │    │   Asterisk      │
-│   Browser       │───▶│   (Drachtio)    │───▶│   Server        │
+│   Browser       │───▶│   (Kamailio)    │───▶│   Server        │
 │   (Opus)        │    │   + RTPEngine   │    │   (PCMU)        │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                               │
@@ -20,6 +20,10 @@ A production-ready SIP proxy that handles WebRTC calls from browsers, transcodes
                        │    Grafana      │
                        └─────────────────┘
 ```
+
+> **🚀 NEW: ARM64 Compatible with Kamailio!**
+>
+> This project now supports ARM64 architectures (Apple Silicon Macs, ARM64 servers) using Kamailio instead of Drachtio. See [README-KAMAILIO.md](README-KAMAILIO.md) for details.
 
 ## 🚀 Quick Start
 
@@ -59,8 +63,9 @@ nano .env
 # Your Asterisk server
 TARGET_SIP_SERVER=asterisk-service.ada-asia.my:5060
 
-# Drachtio secret (default: cymru)
-DRACHTIO_SECRET=cymru
+# Kamailio configuration (ARM64 compatible)
+KAMAILIO_HOST=127.0.0.1
+KAMAILIO_PORT=5060
 
 # CORS origin for your domain
 CORS_ORIGIN=http://localhost:3000

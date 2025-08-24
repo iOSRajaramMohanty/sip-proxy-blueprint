@@ -1,0 +1,93 @@
+# Simplified Production Docker Compose for SIP Proxy Blueprint with Kamailio
+# Core services only - SIP Proxy, Kamailio (ARM64 native), WebRTC Bridge
+
+services:
+  # SIP Proxy Web Service - Main application
+  sip-proxy-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: sip-proxy-app-production
+    restart: unless-stopped
+    ports:
+      - "3001:3000" # HTTP API
+      - "5061:5060" # SIP Signaling
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - KAMAILIO_HOST=kamailio-server
+      - KAMAILIO_PORT=5060
+      - TARGET_SIP_SERVER=asterisk-service.ada-asia.my:5060
+      - CORS_ORIGIN=https://yourdomain.com
+    depends_on:
+      - kamailio-server
+    networks:
+      - sip-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kamailio SIP Server - SIP signaling (ARM64 native)
+  kamailio-server:
+    image: kamailio/kamailio:5.6-debug
+    platform: linux/arm64
+    container_name: kamailio-server-production
+    restart: unless-stopped
+    ports:
+      - "9023:5060" # SIP port
+      - "5062:5060" # SIP port
+    environment:
+      - KAMAILIO_SIP_PORT=5060
+      - KAMAILIO_LOG_LEVEL=info
+    volumes:
+      - ./kamailio/kamailio.cfg:/etc/kamailio/kamailio.cfg:ro
+    command: ["kamailio", "-f", "/etc/kamailio/kamailio.cfg", "-D", "-E"]
+    networks:
+      - sip-network
+
+  # WebRTC Bridge - WebSocket server for browsers
+  webrtc-bridge:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.webrtc
+    container_name: webrtc-bridge-production
+    restart: unless-stopped
+    ports:
+      - "8081:8080" # WebSocket port
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - SIP_PROXY_URL=http://sip-proxy-app:3000
+      - CORS_ORIGIN=https://yourdomain.com
+    depends_on:
+      - sip-proxy-app
+    networks:
+      - sip-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  sip-network:
+    driver: bridge 
