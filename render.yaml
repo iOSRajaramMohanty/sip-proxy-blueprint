@@ -57,6 +57,7 @@ services:
     scaling:
       minInstances: 1
       maxInstances: 3
+      targetCPUPercent: 70
 
   # WebRTC Bridge - WebSocket server for browsers
   - type: web
@@ -80,6 +81,7 @@ services:
     scaling:
       minInstances: 1
       maxInstances: 5
+      targetCPUPercent: 70
 
   # RTPEngine Load Balancer - Media proxy
   - type: web
@@ -96,6 +98,7 @@ services:
     scaling:
       minInstances: 1
       maxInstances: 3
+      targetCPUPercent: 70
 
   # Background Worker for RTPEngine (Optional)
   - type: worker
