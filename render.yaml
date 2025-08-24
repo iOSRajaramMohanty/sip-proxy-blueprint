@@ -1,0 +1,129 @@
+# render.yaml - Infrastructure as Code for SIP Proxy Blueprint
+# Deploy your SIP proxy service on Render.com with automatic scaling
+
+services:
+  # SIP Proxy Web Service - Main application
+  - type: web
+    name: sip-proxy-app
+    runtime: node
+    plan: starter # or professional for production
+    buildCommand: |
+      cd app && npm ci --only=production
+    startCommand: cd app && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: LOG_LEVEL
+        value: info
+      - key: DRACHTIO_HOST
+        value: drachtio-server
+      - key: DRACHTIO_PORT
+        value: 9022
+      - key: DRACHTIO_SECRET
+        sync: false # Set in Render dashboard
+      - key: TARGET_SIP_SERVER
+        sync: false # Set in Render dashboard
+      - key: CORS_ORIGIN
+        sync: false # Set in Render dashboard
+      - key: RTPENGINE_HOST
+        value: rtpengine-lb
+      - key: RTPENGINE_PORT
+        value: 22222
+    healthCheckPath: /health
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 10
+      targetCPUPercent: 70
+
+  # Drachtio SIP Server - SIP signaling
+  - type: web
+    name: drachtio-server
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./drachtio/Dockerfile
+    dockerContext: ./drachtio
+    envVars:
+      - key: DRACHTIO_ADMIN_PORT
+        value: 9022
+      - key: DRACHTIO_SIP_PORT
+        value: 5060
+      - key: DRACHTIO_LOG_LEVEL
+        value: info
+    healthCheckPath: /health
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+
+  # WebRTC Bridge - WebSocket server for browsers
+  - type: web
+    name: webrtc-bridge
+    runtime: node
+    plan: starter
+    buildCommand: |
+      cd app && npm ci --only=production
+    startCommand: cd app && node webrtc-bridge.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: SIP_PROXY_URL
+        value: https://sip-proxy-app.onrender.com
+      - key: CORS_ORIGIN
+        sync: false # Set in Render dashboard
+    healthCheckPath: /health
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 5
+
+  # RTPEngine Load Balancer - Media proxy
+  - type: web
+    name: rtpengine-lb
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./nginx/Dockerfile
+    dockerContext: ./nginx
+    envVars:
+      - key: NGINX_PORT
+        value: 22222
+    healthCheckPath: /health
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+
+  # Background Worker for RTPEngine (Optional)
+  - type: worker
+    name: rtpengine-worker-1
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./rtpengine/Dockerfile
+    dockerContext: ./rtpengine
+    envVars:
+      - key: RTPENGINE_OPTS
+        value: "--interface=eth0 --http-port=22222 --listen-ng=0.0.0.0:22222 --log-level=info"
+    autoDeploy: true
+
+  # Background Worker for RTPEngine (Optional)
+  - type: worker
+    name: rtpengine-worker-2
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./rtpengine/Dockerfile
+    dockerContext: ./rtpengine
+    envVars:
+      - key: RTPENGINE_OPTS
+        value: "--interface=eth0 --http-port=22222 --listen-ng=0.0.0.0:22222 --log-level=info"
+    autoDeploy: true
+
+databases:
+  # Redis for session management (optional)
+  - name: sip-proxy-redis
+    databaseName: sip_proxy
+    plan: free
+    ipAllowList: []

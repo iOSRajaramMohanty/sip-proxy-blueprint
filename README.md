@@ -629,6 +629,270 @@ spec:
   type: LoadBalancer
 ```
 
+#### **Option 4: Render.com Deployment (Recommended for Startups & Small Teams)**
+
+[Render.com](https://render.com/) provides a modern cloud platform that's perfect for deploying SIP proxy services with automatic scaling, zero-downtime deployments, and managed infrastructure.
+
+**Why Render for SIP Proxy:**
+
+- **Automatic Deploys**: Deploy on every Git push with zero downtime
+- **Load-Based Autoscaling**: Automatically scale based on traffic patterns
+- **Private Networking**: Secure communication between services
+- **DDoS Protection**: Built-in protection against attacks
+- **Managed SSL**: Automatic HTTPS certificates
+- **Infrastructure as Code**: Define everything in Blueprint files
+
+**Deployment Steps:**
+
+1. **Prepare Your Repository**
+
+```bash
+# Ensure your repo has the necessary files
+├── app/
+│   ├── package.json
+│   ├── proxy.js
+│   └── webrtc-bridge.js
+├── docker-compose.production.yml
+├── render.yaml  # Render Blueprint
+└── README.md
+```
+
+2. **Create Render Blueprint (render.yaml)**
+
+```yaml
+# render.yaml - Infrastructure as Code
+services:
+  # SIP Proxy Web Service
+  - type: web
+    name: sip-proxy-app
+    env: node
+    plan: starter # or professional for production
+    buildCommand: |
+      cd app && npm ci --only=production
+    startCommand: cd app && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: LOG_LEVEL
+        value: info
+      - key: DRACHTIO_HOST
+        value: drachtio-server
+      - key: DRACHTIO_PORT
+        value: 9022
+      - key: DRACHTIO_SECRET
+        sync: false # Set in Render dashboard
+      - key: TARGET_SIP_SERVER
+        sync: false # Set in Render dashboard
+      - key: CORS_ORIGIN
+        sync: false # Set in Render dashboard
+    healthCheckPath: /health
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 10
+      targetCPUPercent: 70
+
+  # Drachtio SIP Server
+  - type: web
+    name: drachtio-server
+    env: docker
+    plan: starter
+    dockerfilePath: ./drachtio/Dockerfile
+    dockerContext: ./drachtio
+    envVars:
+      - key: DRACHTIO_ADMIN_PORT
+        value: 9022
+      - key: DRACHTIO_SIP_PORT
+        value: 5060
+      - key: DRACHTIO_LOG_LEVEL
+        value: info
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # WebRTC Bridge
+  - type: web
+    name: webrtc-bridge
+    env: node
+    plan: starter
+    buildCommand: |
+      cd app && npm ci --only=production
+    startCommand: cd app && node webrtc-bridge.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: SIP_PROXY_URL
+        value: https://sip-proxy-app.onrender.com
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # RTPEngine Load Balancer
+  - type: web
+    name: rtpengine-lb
+    env: docker
+    plan: starter
+    dockerfilePath: ./nginx/Dockerfile
+    dockerContext: ./nginx
+    envVars:
+      - key: NGINX_PORT
+        value: 22222
+    healthCheckPath: /health
+    autoDeploy: true
+
+databases:
+  # Redis for session management (optional)
+  - name: sip-proxy-redis
+    databaseName: sip_proxy
+    plan: free
+    ipAllowList: []
+
+# Environment Groups for different stages
+envGroups:
+  - name: production
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: ENABLE_MONITORING
+        value: true
+
+  - name: staging
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: LOG_LEVEL
+        value: debug
+      - key: ENABLE_MONITORING
+        value: false
+```
+
+3. **Create Dockerfile for Drachtio (drachtio/Dockerfile)**
+
+```dockerfile
+# drachtio/Dockerfile
+FROM drachtio/drachtio-server:latest
+
+# Copy configuration
+COPY drachtio.conf.xml /etc/drachtio.conf.xml
+
+# Expose ports
+EXPOSE 9022 5060 5061
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:9022/health || exit 1
+
+# Start Drachtio
+CMD ["drachtio", "-f", "/etc/drachtio.conf.xml"]
+```
+
+4. **Create Dockerfile for Nginx (nginx/Dockerfile)**
+
+```dockerfile
+# nginx/Dockerfile
+FROM nginx:alpine
+
+# Copy configuration
+COPY rtpengine.conf /etc/nginx/nginx.conf
+
+# Expose port
+EXPOSE 22222
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:22222/health || exit 1
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+5. **Deploy on Render**
+
+```bash
+# Option A: Deploy via Git (Recommended)
+# 1. Push your code to GitHub/GitLab
+git add .
+git commit -m "Add Render deployment configuration"
+git push origin main
+
+# 2. Connect your repository to Render
+# - Go to https://render.com/
+# - Click "New +" → "Blueprint"
+# - Connect your Git repository
+# - Select the render.yaml file
+# - Click "Apply"
+
+# Option B: Deploy via Render CLI
+# Install Render CLI
+npm install -g @render/cli
+
+# Login to Render
+render login
+
+# Deploy from local directory
+render blueprint apply
+```
+
+6. **Configure Environment Variables in Render Dashboard**
+
+```bash
+# Required environment variables to set in Render dashboard:
+DRACHTIO_SECRET=your-secret-key
+TARGET_SIP_SERVER=your-asterisk-server:5060
+CORS_ORIGIN=https://your-domain.com
+
+# Optional environment variables:
+ENABLE_MONITORING=true
+ENABLE_LOGGING=true
+LOG_LEVEL=info
+```
+
+7. **Custom Domain Setup (Optional)**
+
+```bash
+# In Render dashboard:
+# 1. Go to your service
+# 2. Click "Settings" → "Custom Domains"
+# 3. Add your domain (e.g., sip.yourdomain.com)
+# 4. Update DNS records as instructed
+# 5. SSL certificate will be automatically provisioned
+```
+
+**Render Service URLs:**
+
+- **SIP Proxy**: `https://sip-proxy-app.onrender.com`
+- **WebRTC Bridge**: `https://webrtc-bridge.onrender.com`
+- **Drachtio**: `https://drachtio-server.onrender.com`
+- **RTPEngine LB**: `https://rtpengine-lb.onrender.com`
+
+**Monitoring & Scaling:**
+
+- **Autoscaling**: Automatically scales based on CPU usage
+- **Health Checks**: Automatic health monitoring
+- **Logs**: Real-time log streaming in dashboard
+- **Metrics**: Built-in performance monitoring
+- **Alerts**: Slack/email notifications for issues
+
+**Cost Optimization:**
+
+- **Free Tier**: 750 hours/month for development
+- **Starter Plan**: $7/month for production use
+- **Professional Plan**: $25/month for high-traffic applications
+- **Auto-scaling**: Only pay for resources you use
+
+**Production Considerations:**
+
+- Use **Professional Plan** for production workloads
+- Enable **Private Networking** for secure service communication
+- Set up **Custom Domains** with SSL certificates
+- Configure **Environment Groups** for staging/production
+- Enable **Auto-scaling** based on traffic patterns
+- Set up **Slack Notifications** for deployment alerts
+
 ### 🔧 **Configuration for Different Use Cases**
 
 #### **Use Case 1: Contact Center Integration**
