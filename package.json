@@ -2,10 +2,10 @@
   "name": "sip-proxy-blueprint",
   "version": "1.0.0",
   "description": "SIP Proxy with RTPEngine media transcoding and load balancing",
-  "main": "app/proxy-kamailio.js",
+  "main": "app/proxy-simple.js",
   "scripts": {
-    "start": "node app/proxy-kamailio.js",
-    "dev": "nodemon app/proxy-kamailio.js",
+    "start": "node app/proxy-simple.js",
+    "dev": "nodemon app/proxy-simple.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint app/",

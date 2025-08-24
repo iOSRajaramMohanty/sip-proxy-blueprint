@@ -31,10 +31,10 @@ set +a  # stop automatically exporting
 
 # Build and start services
 echo "🔨 Building production images..."
-docker-compose -f docker-compose.kamailio.yml build --no-cache
+docker-compose -f docker-compose.simple.yml build --no-cache
 
 echo "🚀 Starting production services..."
-docker-compose -f docker-compose.kamailio.yml up -d
+docker-compose -f docker-compose.simple.yml up -d
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
@@ -42,7 +42,7 @@ sleep 30
 
 # Check service health
 echo "🔍 Checking service health..."
-docker-compose -f docker-compose.kamailio.yml ps
+docker-compose -f docker-compose.simple.yml ps
 
 # Run health checks
 echo "🏥 Running health checks..."

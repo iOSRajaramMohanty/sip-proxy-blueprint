@@ -1,5 +1,5 @@
-# Simplified Production Docker Compose for SIP Proxy Blueprint with Kamailio
-# Core services only - SIP Proxy, Kamailio (ARM64 native), WebRTC Bridge
+# Simple Production Docker Compose - SIP Proxy Only
+# Deploy this first, add Kamailio later
 
 services:
   # SIP Proxy Web Service - Main application
@@ -16,12 +16,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - LOG_LEVEL=info
-      - KAMAILIO_HOST=kamailio-server
-      - KAMAILIO_PORT=5060
       - TARGET_SIP_SERVER=asterisk-service.ada-asia.my:5060
       - CORS_ORIGIN=https://yourdomain.com
-    depends_on:
-      - kamailio-server
     networks:
       - sip-network
     healthcheck:
@@ -37,23 +33,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Kamailio SIP Server - SIP signaling (ARM64 native)
-  kamailio-server:
-    image: cloudonix/kamailio:latest
-    container_name: kamailio-server-production
-    restart: unless-stopped
-    ports:
-      - "9023:5060" # SIP port
-      - "5062:5060" # SIP port
-    environment:
-      - KAMAILIO_SIP_PORT=5060
-      - KAMAILIO_LOG_LEVEL=info
-    volumes:
-      - ./kamailio/kamailio.cfg:/etc/kamailio/kamailio.cfg:ro
-    command: ["kamailio", "-f", "/etc/kamailio/kamailio.cfg", "-D", "-E"]
-    networks:
-      - sip-network
 
   # WebRTC Bridge - WebSocket server for browsers
   webrtc-bridge:

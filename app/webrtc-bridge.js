@@ -14,8 +14,24 @@ class WebRTCBridge {
   }
 
   start() {
+    // Create HTTP server for health checks
+    this.httpServer = http.createServer((req, res) => {
+      if (req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'healthy',
+          service: 'webrtc-bridge',
+          timestamp: new Date().toISOString(),
+          clients: this.clients.size
+        }));
+      } else {
+        res.writeHead(404);
+        res.end('Not Found');
+      }
+    });
+
     // Create WebSocket server
-    this.wss = new WebSocket.Server({ port: this.port });
+    this.wss = new WebSocket.Server({ server: this.httpServer });
 
     this.wss.on("connection", (ws, req) => {
       const clientId = this.generateClientId();
@@ -71,7 +87,10 @@ class WebRTCBridge {
       });
     });
 
-    console.log(`✅ WebRTC Bridge started on port ${this.port}`);
+    // Start HTTP server
+    this.httpServer.listen(this.port, () => {
+      console.log(`✅ WebRTC Bridge started on port ${this.port}`);
+    });
   }
 
   handleWebRTCMessage(clientId, data) {
