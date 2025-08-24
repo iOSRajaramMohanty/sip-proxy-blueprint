@@ -37,6 +37,7 @@ services:
   # Drachtio SIP Server
   drachtio-server:
     image: drachtio/drachtio-server:latest
+    platform: linux/amd64
     container_name: drachtio-production
     restart: unless-stopped
     ports:
@@ -183,6 +184,7 @@ services:
   # Monitoring & Logging
   prometheus:
     image: prom/prometheus:latest
+    platform: linux/amd64
     container_name: prometheus
     restart: unless-stopped
     ports:
@@ -202,6 +204,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    platform: linux/amd64
     container_name: grafana
     restart: unless-stopped
     ports:
