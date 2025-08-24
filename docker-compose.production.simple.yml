@@ -41,9 +41,8 @@ services:
 
   # Drachtio SIP Server - SIP signaling
   drachtio-server:
-    build:
-      context: ./drachtio
-      dockerfile: Dockerfile
+    image: drachtio/drachtio-server:latest
+    platform: linux/amd64
     container_name: drachtio-server-production
     restart: unless-stopped
     ports:

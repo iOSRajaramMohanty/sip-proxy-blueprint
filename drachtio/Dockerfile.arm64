@@ -1,0 +1,40 @@
+# Alternative ARM64-compatible Dockerfile for Drachtio SIP Server
+FROM debian:bullseye-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Drachtio from source (ARM64 compatible)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libssl-dev \
+    libhiredis-dev \
+    libpcre3-dev \
+    libspdlog-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build Drachtio
+RUN git clone https://github.com/drachtio/drachtio-server.git /tmp/drachtio \
+    && cd /tmp/drachtio \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && make install \
+    && ldconfig \
+    && rm -rf /tmp/drachtio
+
+# Copy configuration
+COPY drachtio.conf.xml /etc/drachtio.conf.xml
+
+# Expose ports
+EXPOSE 9022 5060 5061
+
+# Start Drachtio
+CMD ["drachtio", "-f", "/etc/drachtio.conf.xml"] 
